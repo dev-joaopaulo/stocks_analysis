@@ -1,6 +1,8 @@
 from backtest_rsi import make_extensive_test_ticker, backtest_rsi
 import pandas as pd
 import warnings
+
+from stocks_data import find_stocks_with_high_volume
 from tickers import *
 from stocks_analyzer import *
 
@@ -19,10 +21,13 @@ if __name__ == '__main__':
     smll_analysis = analyze_rsi_opportunities_from_tickers(SMLL, interval, "2y")
     print("____________IFIX_______________")
     print_rsi_opportunity_analysis(ifix_analysis)
+    print(f"IFIX com alto volume {find_stocks_with_high_volume(IFIX, '1d', '1mo', 10)}")
     print("____________IDIV_______________")
     print_rsi_opportunity_analysis(idiv_analysis)
+    print(f"IDIV com alto volume {find_stocks_with_high_volume(IDIV, '1d', '1mo', 10)}")
     print("____________SMLL_______________")
     print_rsi_opportunity_analysis(smll_analysis)
+    print(f"SMLL com alto volume {find_stocks_with_high_volume(SMLL, '1d', '1mo', 10)}")
 
 
 if __name__ == '__main__':
@@ -44,3 +49,4 @@ if __name__ == '__main__':
     #                                                      use_stop=use_stop, use_upper_threshold=use_upper_threshold,
     #                                                      use_target=use_target)
     # print(ticker_analysis_results)
+
