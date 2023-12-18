@@ -1,5 +1,5 @@
 from stocks_data import get_data_from_ticker
-from indicator_rsi import *
+from rsi_indicator import *
 
 
 def analyze_rsi_opportunities_from_tickers(tickers, interval, period, upper_rsi_limit=0.9, lower_rsi_limit=0.10):
