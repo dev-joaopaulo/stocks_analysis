@@ -1,4 +1,4 @@
-from stocks_data import get_data_from_ticker
+from stocks_data import get_data_with_adj_close
 from rsi_indicator import *
 
 
@@ -7,7 +7,7 @@ def analyze_rsi_opportunities_from_tickers(tickers, interval, period, upper_rsi_
     oversold_tickers = []
     for ticker in tickers:
         try:
-            historical_data = get_data_from_ticker(ticker, interval, period)
+            historical_data = get_data_with_adj_close(ticker, interval, period)
         except:
             print(f"Not possible to get data from {ticker}")
             break

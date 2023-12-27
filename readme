@@ -1,0 +1,3 @@
+Para ativar o ambiente virtual, subir a permissão de adm do PowerShell:
+
+Set-ExecutionPolicy Unrestricted -Scope Process

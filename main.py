@@ -1,10 +1,10 @@
-from backtest_rsi import make_extensive_test_ticker, backtest_rsi
+from rsi_backtest import make_extensive_test_ticker, backtest_rsi
 import pandas as pd
 import warnings
 
 from stocks_data import find_stocks_with_high_volume
 from tickers import *
-from stocks_analyzer import *
+from rsi_stocks_analyzer import *
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -18,23 +18,18 @@ if __name__ == '__main__':
 
     ifix_analysis = analyze_rsi_opportunities_from_tickers(IFIX, interval, "2y")
     idiv_analysis = analyze_rsi_opportunities_from_tickers(IDIV, interval, "5y", lower_rsi_limit=0.15)
-    smll_analysis = analyze_rsi_opportunities_from_tickers(SMLL, interval, "2y")
     print("____________IFIX_______________")
     print_rsi_opportunity_analysis(ifix_analysis)
     print(f"IFIX com alto volume {find_stocks_with_high_volume(IFIX, '1d', '1mo', 10)}")
     print("____________IDIV_______________")
     print_rsi_opportunity_analysis(idiv_analysis)
     print(f"IDIV com alto volume {find_stocks_with_high_volume(IDIV, '1d', '1mo', 10)}")
-    print("____________SMLL_______________")
-    print_rsi_opportunity_analysis(smll_analysis)
-    print(f"SMLL com alto volume {find_stocks_with_high_volume(SMLL, '1d', '1mo', 10)}")
-
 
 if __name__ == '__main__':
     ticker = "ITSA4"
     period = "15y"
     interval = "1wk"
-    use_stop = False
+    use_stop = True
     use_upper_threshold = True
     use_target = True
     min_holding_period = 4
@@ -43,7 +38,7 @@ if __name__ == '__main__':
     # backtest = backtest_rsi(ticker, 1.2, period, interval, min_holding_period=min_holding_period, use_stop=use_stop,
     #                         use_upper_threshold=use_upper_threshold, use_target=use_target)
     # print(backtest)
-
+    #
     # print(f"____________ticker_analysis_results {ticker}_______________")
     # ticker_analysis_results = make_extensive_test_ticker(ticker, period, interval, min_holding_period=min_holding_period,
     #                                                      use_stop=use_stop, use_upper_threshold=use_upper_threshold,

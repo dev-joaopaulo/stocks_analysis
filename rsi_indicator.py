@@ -3,7 +3,7 @@ import numpy as np
 
 
 def calculate_rsi(historical_data, period=9):
-    delta = historical_data['Close'].diff()
+    delta = historical_data['Adj Close'].diff()
 
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)

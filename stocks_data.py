@@ -7,6 +7,11 @@ def get_data_from_ticker(ticker_symbol, interval, period):
     return stock.history(interval=interval, period=period)
 
 
+def get_data_with_adj_close(ticker_symbol, interval, period):
+    ticker = ticker_symbol + ".SA"
+    return yf.download(ticker, interval=interval, period=period, progress=False)
+
+
 def find_stocks_with_high_volume(ticker_symbols, interval, period, moving_average_days):
     high_volume_stocks = []
     for ticker in ticker_symbols:
