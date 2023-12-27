@@ -41,6 +41,7 @@ def initialize_results_dataframe():
 
 def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use_stop=True,
                  min_holding_period=4, max_signal_period=4, use_upper_threshold=False, use_target=True):
+
     data = get_data_with_adj_close(ticker, interval, period)
     data['RSI'] = calculate_rsi(data, period=9)
     lower_threshold = get_lower_threshold_rsi(data['RSI'], low_threshold)
@@ -57,13 +58,10 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
         signal_entry_date = index
         entry_signal_rsi = row['RSI']
         entry = row['High'] + 0.01
-        # Determinar o stop como 0.01 abaixo do valor mínimo entre a semana identificada e a semana anterior
-        previous_previous_week_low = data.iloc[data.index.get_loc(index) - 2]['Low']
-        previous_week_low = data.iloc[data.index.get_loc(index) - 1]['Low']
-        current_week_low = row['Low']
-        stop = min(previous_week_low, current_week_low, previous_previous_week_low) - 0.01
+        stop = get_stop(data, index, row)
+        risk = entry - stop
 
-        target = entry + target_delta * (entry - stop)
+        target = entry + target_delta * risk
 
         # Verificar se a entrada foi atingida e se o stop ou alvo foi atingido primeiro
         entry_hit = False
@@ -123,15 +121,25 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
             duration = exit_date - entry_date if exit_date else pd.NaT
             result = 'Target' if hit_target else ('Stop' if hit_stop else 'Open')
             gain_loss_pct = ((exit_price - entry) / entry) * 100 if exit_price is not None else np.NaN
+            r_multiple = ((exit_price - entry) / risk) if exit_price is not None else np.NaN
 
             new_row = pd.DataFrame(
                 {'Entry RSI': [entry_signal_rsi], 'Signal Date': [signal_entry_date], 'Entry Date': [entry_date],
                  'Entry': [entry], 'Stop': [stop], 'Target': [target], 'Exit Date': [exit_date], 'Duration': [duration],
-                 'Gain/Loss %': [gain_loss_pct], 'Result': [result]})
+                 'Gain/Loss %': [gain_loss_pct], 'Result': [result], 'R multiple': [r_multiple]})
             # Usar concat em vez de append
             results = pd.concat([results, new_row], ignore_index=True)
 
     return results
+
+
+def get_stop(data, index, row):
+    # Determinar o stop como 0.01 abaixo do valor mínimo entre a semana identificada e a semana anterior
+    previous_previous_week_low = data.iloc[data.index.get_loc(index) - 2]['Low']
+    previous_week_low = data.iloc[data.index.get_loc(index) - 1]['Low']
+    current_week_low = row['Low']
+    stop = min(previous_week_low, current_week_low, previous_previous_week_low) - 0.01
+    return stop
 
 
 def view_backtest_results(results):
@@ -156,7 +164,8 @@ def convert_to_timedelta(item):
 
 def compare_multiple_results(group_test, target_delta, period, interval, use_stop=True,
                              min_holding_period=4, max_signal_period=4, use_upper_threshold=False, use_target=True):
-    comparison_results = pd.DataFrame(columns=['Ticker', 'Success Rate', 'Operations', 'Avg. Period', 'Avg. Profit'])
+    comparison_results = pd.DataFrame(columns=['Ticker', 'Success Rate', 'Operations', 'Avg. Period',
+                                               'Avg. Profit', 'Avg. R Multiple'])
     for ticker in group_test:
 
         results = backtest_rsi(ticker, target_delta, period, interval, min_holding_period=min_holding_period,
@@ -181,13 +190,19 @@ def compare_multiple_results(group_test, target_delta, period, interval, use_sto
         else:
             avg_period = "N/A"
 
+        if 'R multiple' in results.columns:
+            average_risk = results['R multiple'].dropna().mean()
+        else:
+            average_risk = None
+
         new_row = pd.DataFrame({
             'Ticker': [ticker],
             'Success Rate': [get_success_rate(results)],
             'Operations': [len(results)],
             'Avg. Period': avg_period,
             'Avg. Profit': average_gain,
-            'Annualized return': annualized_return})
+            'Annualized return': annualized_return,
+            'Avg R Multiple': average_risk})
 
         new_row = new_row.dropna(axis=1, how='all')
         comparison_results = pd.concat([comparison_results, new_row], ignore_index=True)
@@ -203,7 +218,9 @@ def compare_multiple_results(group_test, target_delta, period, interval, use_sto
 
 
 def make_extensive_test_tickers_list(tickers_list, period, interval, use_stop=True,
-                                     min_holding_period=4, max_signal_period=4, use_upper_threshold=False, use_target=True):
+                                     min_holding_period=4, max_signal_period=4,
+                                     use_upper_threshold=False, use_target=True):
+
     target_tests = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3]
     results = pd.DataFrame(columns=['Target', 'Avg. Success Rate', 'Avg. Period', 'Avg. Profit'])
 
@@ -242,6 +259,7 @@ def make_extensive_test_ticker(ticker, period, interval, use_stop=True, min_hold
         avg_period = result['Avg. Period'].mean()
         number_operations = result['Operations'].mean()
         annualized_return = result['Annualized return'].mean()
+        avg_risk = result['Avg R Multiple'].mean()
 
         new_row = pd.DataFrame({
             'Target': [tgt],
@@ -249,7 +267,8 @@ def make_extensive_test_ticker(ticker, period, interval, use_stop=True, min_hold
             'Avg. Period': avg_period,
             'No. Operations': number_operations,
             'Avg. Profit': avg_profit,
-            'Annualized Return': annualized_return})
+            'Annualized Return': annualized_return,
+            'Avg. R Multiple': avg_risk})
 
         results = pd.concat([results, new_row], ignore_index=True)
 
