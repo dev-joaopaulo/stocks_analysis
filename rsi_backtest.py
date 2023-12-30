@@ -3,7 +3,7 @@ import pandas as pd
 
 from finance_analysis import get_annualized_return
 from rsi_indicator import calculate_rsi, get_lower_threshold_rsi, get_upper_threshold_rsi
-from stocks_data import get_data_from_ticker, get_data_with_adj_close
+from stocks_data import get_data_from_ticker, get_data_with_adj_close, transform_adjusted_data
 
 
 def calculate_stop_price(previous_week_low, current_week_low, previous_previous_week_low):
@@ -40,9 +40,14 @@ def initialize_results_dataframe():
 
 
 def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use_stop=True,
-                 min_holding_period=4, max_signal_period=4, use_upper_threshold=False, use_target=True):
+                 min_holding_period=4, max_signal_period=4, use_upper_threshold=False,
+                 use_target=True, adjust_by_dy=True):
 
     data = get_data_with_adj_close(ticker, interval, period)
+
+    if adjust_by_dy:
+        data = transform_adjusted_data(data)
+
     data['RSI'] = calculate_rsi(data, period=9)
     lower_threshold = get_lower_threshold_rsi(data['RSI'], low_threshold)
     upper_threshold = get_upper_threshold_rsi(data['RSI'], 0.9)

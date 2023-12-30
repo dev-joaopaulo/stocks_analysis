@@ -12,6 +12,14 @@ def get_data_with_adj_close(ticker_symbol, interval, period):
     return yf.download(ticker, interval=interval, period=period, progress=False)
 
 
+def transform_adjusted_data(data):
+    adj_factor = data['Close'] / data['Adj Close']
+    data['Open'] = data['Open'] / adj_factor
+    data['Close'] = data['Close'] / adj_factor
+    data['High'] = data['High'] / adj_factor
+    data['Low'] = data['Low'] / adj_factor
+    return data
+
 def find_stocks_with_high_volume(ticker_symbols, interval, period, moving_average_days):
     high_volume_stocks = []
     for ticker in ticker_symbols:

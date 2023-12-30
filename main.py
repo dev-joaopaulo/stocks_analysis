@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # print(f"IDIV com alto volume {find_stocks_with_high_volume(IDIV, '1d', '1mo', 10)}")
 
 if __name__ == '__main__':
-    ticker = "PETR4"
+    ticker = "CMIG3"
     period = "15y"
     interval = "1wk"
     use_stop = True
@@ -39,9 +39,9 @@ if __name__ == '__main__':
                             use_upper_threshold=use_upper_threshold, use_target=use_target)
     print(backtest)
 
-    print(f"____________ticker_analysis_results {ticker}_______________")
-    ticker_analysis_results = make_extensive_test_ticker(ticker, period, interval, min_holding_period=min_holding_period,
-                                                         use_stop=use_stop, use_upper_threshold=use_upper_threshold,
-                                                         use_target=use_target)
-    print(ticker_analysis_results)
+    # print(f"____________ticker_analysis_results {ticker}_______________")
+    # ticker_analysis_results = make_extensive_test_ticker(ticker, period, interval, min_holding_period=min_holding_period,
+    #                                                      use_stop=use_stop, use_upper_threshold=use_upper_threshold,
+    #                                                      use_target=use_target)
+    # print(ticker_analysis_results)
 
