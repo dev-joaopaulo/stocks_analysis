@@ -11,7 +11,7 @@ def analyze_rsi_opportunities_from_tickers(tickers, interval, period, upper_rsi_
         except:
             print(f"Not possible to get data from {ticker}")
             break
-        rsi = calculate_rsi(historical_data)
+        rsi = calculate_rsi(historical_data, period=14)
         upper_threshold = get_upper_threshold_rsi(rsi, upper_rsi_limit)
         lower_threshold = get_lower_threshold_rsi(rsi, lower_rsi_limit)
         last_result = rsi.iloc[-1]

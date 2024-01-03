@@ -48,7 +48,7 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
     if adjust_by_dy:
         data = transform_adjusted_data(data)
 
-    data['RSI'] = calculate_rsi(data, period=9)
+    data['RSI'] = calculate_rsi(data, period=14)
     lower_threshold = get_lower_threshold_rsi(data['RSI'], low_threshold)
     upper_threshold = get_upper_threshold_rsi(data['RSI'], 0.9)
 
@@ -191,7 +191,8 @@ def compare_multiple_results(group_test, target_delta, period, interval, use_sto
         if 'Duration' in results.columns:
             avg_duration = results['Duration'].dropna().mean()
             avg_period = f"{avg_duration.days} days" if not pd.isna(avg_duration) else "N/A"
-            annualized_return = 100 * get_annualized_return(avg_duration.days, average_gain/100) if not pd.isna(avg_duration) else np.NaN
+            annualized_return = 100 * get_annualized_return(avg_duration.days, average_gain/100) \
+                if not pd.isna(avg_duration) else np.NaN
         else:
             avg_period = "N/A"
 
@@ -236,13 +237,19 @@ def make_extensive_test_tickers_list(tickers_list, period, interval, use_stop=Tr
 
         avg_success = result['Success Rate'].mean()
         avg_profit = result['Avg. Profit'].mean()
-        avg_period = result['Avg. Period'].median()
+        avg_period = result['Avg. Period'].mean()
+        avg_annual_return = result['Annualized return'].mean()
+        avg_risk_ratio = result['Avg R Multiple'].mean()
+        num_operations = result['Operations'].sum()
 
         new_row = pd.DataFrame({
             'Target': [target],
             'Avg. Success Rate': [avg_success],
             'Avg. Period': avg_period,
-            'Avg. Profit': avg_profit})
+            'Avg. Profit': avg_profit,
+            'Avg. Annualized return': avg_annual_return,
+            'Avg. Risk Multiple': avg_risk_ratio,
+            'No. Operations': num_operations})
 
         results = pd.concat([results, new_row], ignore_index=True)
 

@@ -11,5 +11,3 @@ def get_number_stocks_based_on_risk(unit_risk, max_risk):
 
 def get_risk_target_based_on_number_stocks(unit_risk, num_stocks, profit_target):
     return profit_target/(unit_risk * num_stocks)
-
-
