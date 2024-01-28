@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 
+from atr_indicator import calculate_atr
 from finance_analysis import get_annualized_return
 from rsi_indicator import calculate_rsi, get_lower_threshold_rsi, get_upper_threshold_rsi
 from stocks_data import get_data_from_ticker, get_data_with_adj_close, transform_adjusted_data
+from stop_setting import get_moving_stop_atr, get_simple_stop, get_stop_atr
 
 
 def calculate_stop_price(previous_week_low, current_week_low, previous_previous_week_low):
@@ -41,7 +43,7 @@ def initialize_results_dataframe():
 
 def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use_stop=True,
                  min_holding_period=4, max_signal_period=4, use_upper_threshold=False,
-                 use_target=True, adjust_by_dy=True):
+                 use_target=True, adjust_by_dy=True, use_moving_stop=False, atr_factor=0.7):
 
     data = get_data_with_adj_close(ticker, interval, period)
 
@@ -59,12 +61,16 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
 
     results = initialize_results_dataframe()
 
+    if use_moving_stop:
+        data = calculate_atr(data, 12)
+
     for index, row in data[data['Signal']].iterrows():
         signal_entry_date = index
         entry_signal_rsi = row['RSI']
         entry = row['High'] + 0.01
-        stop = get_stop(data, index, row)
-        risk = entry - stop
+        initial_stop = get_simple_stop(data, index, row)
+        risk = entry - initial_stop
+        stop = initial_stop
 
         target = entry + target_delta * risk
 
@@ -79,7 +85,10 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
         weeks_since_entry = -1
 
         stop_pct = ((stop - entry) / entry) * 100
-
+        
+        if stop_pct > 15:
+            break
+        
         # Loop pelas semanas subsequentes, começando pela semana seguinte à entrada
         for week_index, week in data.loc[index + pd.Timedelta(weeks=1):].iterrows():
             weeks_since_signal += 1  # Incrementa a contagem de semanas
@@ -87,17 +96,16 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
             if weeks_since_entry >= 0:
                 weeks_since_entry += 1
 
-            if -stop_pct > 15:
-                break
-
-            if week['Low'] <= stop and not entry_hit and \
+            if week['Low'] <= initial_stop and not entry_hit and \
                     ((weeks_since_signal > 1 and week[
                         'RSI'] < lower_threshold) or weeks_since_signal > max_signal_period):
                 break  # Stop atingido antes da entrada, desconsidera o ponto de entrada
+            
             if week['High'] >= entry and not entry_hit:
                 entry_hit = True  # Confirma que a entrada foi atingida
                 entry_date = week_index
                 weeks_since_entry = 0
+                
             if entry_hit and weeks_since_entry > min_holding_period:
                 if use_upper_threshold:
                     if week['RSI'] > upper_threshold and week['Close'] >= target:
@@ -121,30 +129,24 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
                     else:
                         exit_price = stop
                     break
+            
+            if use_moving_stop:
+                stop = get_moving_stop_atr(week, stop, atr_factor)
 
         if entry_date is not pd.NaT:
             duration = exit_date - entry_date if exit_date else pd.NaT
-            result = 'Target' if hit_target else ('Stop' if hit_stop else 'Open')
             gain_loss_pct = ((exit_price - entry) / entry) * 100 if exit_price is not None else np.NaN
+            result = 'Target' if (hit_target or gain_loss_pct > 0) else ('Stop' if hit_stop else 'Open')
             r_multiple = ((exit_price - entry) / risk) if exit_price is not None else np.NaN
 
             new_row = pd.DataFrame(
                 {'Entry RSI': [entry_signal_rsi], 'Signal Date': [signal_entry_date], 'Entry Date': [entry_date],
-                 'Entry': [entry], 'Stop': [stop], 'Target': [target], 'Exit Date': [exit_date], 'Duration': [duration],
+                 'Entry': [entry], 'Initial stop': [initial_stop], 'Stop': [stop], 'Target': [target], 'Exit Date': [exit_date], 'Duration': [duration],
                  'Gain/Loss %': [gain_loss_pct], 'Result': [result], 'R multiple': [r_multiple]})
             # Usar concat em vez de append
             results = pd.concat([results, new_row], ignore_index=True)
 
     return results
-
-
-def get_stop(data, index, row):
-    # Determinar o stop como 0.01 abaixo do valor mínimo entre a semana identificada e a semana anterior
-    previous_previous_week_low = data.iloc[data.index.get_loc(index) - 2]['Low']
-    previous_week_low = data.iloc[data.index.get_loc(index) - 1]['Low']
-    current_week_low = row['Low']
-    stop = min(previous_week_low, current_week_low, previous_previous_week_low) - 0.01
-    return stop
 
 
 def view_backtest_results(results):
@@ -168,14 +170,16 @@ def convert_to_timedelta(item):
 
 
 def compare_multiple_results(group_test, target_delta, period, interval, use_stop=True,
-                             min_holding_period=4, max_signal_period=4, use_upper_threshold=False, use_target=True):
+                             min_holding_period=4, max_signal_period=4, use_upper_threshold=False,
+                             use_target=True, use_moving_stop=False, atr_factor=2):
     comparison_results = pd.DataFrame(columns=['Ticker', 'Success Rate', 'Operations', 'Avg. Period',
                                                'Avg. Profit', 'Avg. R Multiple'])
     for ticker in group_test:
 
         results = backtest_rsi(ticker, target_delta, period, interval, min_holding_period=min_holding_period,
                                use_stop=use_stop, max_signal_period=max_signal_period,
-                               use_upper_threshold=use_upper_threshold, use_target=use_target)
+                               use_upper_threshold=use_upper_threshold, use_target=use_target,
+                               use_moving_stop=use_moving_stop, atr_factor=atr_factor)
 
         # Verifica se a coluna 'Duration' existe e converte para Timedelta se necessário
         if 'Duration' in results.columns and results['Duration'].dtype != 'timedelta64[ns]':
@@ -225,7 +229,7 @@ def compare_multiple_results(group_test, target_delta, period, interval, use_sto
 
 def make_extensive_test_tickers_list(tickers_list, period, interval, use_stop=True,
                                      min_holding_period=4, max_signal_period=4,
-                                     use_upper_threshold=False, use_target=True):
+                                     use_upper_threshold=False, use_target=True, use_moving_stop=False):
 
     target_tests = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3]
     results = pd.DataFrame(columns=['Target', 'Avg. Success Rate', 'Avg. Period', 'Avg. Profit'])
@@ -233,7 +237,8 @@ def make_extensive_test_tickers_list(tickers_list, period, interval, use_stop=Tr
     for target in target_tests:
         result = compare_multiple_results(tickers_list, target, period, interval, min_holding_period=min_holding_period,
                                           use_stop=use_stop, max_signal_period=max_signal_period,
-                                          use_upper_threshold=use_upper_threshold, use_target=use_target)
+                                          use_upper_threshold=use_upper_threshold, use_target=use_target,
+                                          use_moving_stop=use_moving_stop)
 
         avg_success = result['Success Rate'].mean()
         avg_profit = result['Avg. Profit'].mean()
@@ -257,14 +262,15 @@ def make_extensive_test_tickers_list(tickers_list, period, interval, use_stop=Tr
 
 
 def make_extensive_test_ticker(ticker, period, interval, use_stop=True, min_holding_period=4, max_signal_period=4,
-                               use_upper_threshold=False, use_target=True):
+                               use_upper_threshold=False, use_target=True, use_moving_stop=False, atr_factor=2):
     tickers = [ticker]
     target_tests = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3]
     results = pd.DataFrame(columns=['Target', 'Avg. Success Rate', 'Avg. Period', 'Avg. Profit'])
     for tgt in target_tests:
         result = compare_multiple_results(tickers, tgt, period, interval, min_holding_period=min_holding_period,
                                           use_stop=use_stop, max_signal_period=max_signal_period,
-                                          use_upper_threshold=use_upper_threshold, use_target=use_target)
+                                          use_upper_threshold=use_upper_threshold, use_target=use_target,
+                                          use_moving_stop=use_moving_stop, atr_factor=atr_factor)
 
         avg_success = result['Success Rate'].mean()
         avg_profit = result['Avg. Profit'].mean()
