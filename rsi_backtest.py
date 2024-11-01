@@ -68,7 +68,7 @@ def backtest_rsi(ticker, target_delta, period, interval, low_threshold=0.15, use
         signal_entry_date = index
         entry_signal_rsi = row['RSI']
         entry = row['High'] + 0.01
-        initial_stop = get_simple_stop(data, index, row)
+        initial_stop = get_simple_stop(data, index, row, 10)
         risk = entry - initial_stop
         stop = initial_stop
 

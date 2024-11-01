@@ -1,12 +1,16 @@
 from atr_indicator import calculate_atr
 
 
-def get_simple_stop(data, index, row):
-    # Determinar o stop como 0.01 abaixo do valor mínimo entre a semana identificada e a semana anterior
-    previous_previous_week_low = data.iloc[data.index.get_loc(index) - 2]['Low']
-    previous_week_low = data.iloc[data.index.get_loc(index) - 1]['Low']
+def get_simple_stop(data, index, row, num_periods):
+    # Verificar se temos dados suficientes
+    if data.index.get_loc(index) < num_periods:
+        raise ValueError("Dados insuficientes para calcular o stop para o número de períodos fornecido.")
+    
+    # Calcular o stop baseado no número de períodos fornecido
+    lows = [data.iloc[data.index.get_loc(index) - i]['Low'] for i in range(1, num_periods + 1)]
     current_week_low = row['Low']
-    stop = min(previous_week_low, current_week_low, previous_previous_week_low) - 0.01
+    stop = min(lows + [current_week_low]) - 0.01
+    
     return stop
 
 
